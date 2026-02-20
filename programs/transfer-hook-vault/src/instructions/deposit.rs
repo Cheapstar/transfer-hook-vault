@@ -3,7 +3,7 @@ use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount,TransferChecked,transfer_checked,TokenInterface};
 
 use crate::constant::{VAULT, WHITELISTED_ENTRY};
-use crate::state::{UserVaultData, Vault};
+use crate::state::{UserVaultAccount, Vault};
 use crate::error::VaultError;
 
 // all this does is transfer from user_ata to vault_ata
@@ -37,14 +37,8 @@ pub struct Deposit<'info> {
     )]
     pub vault_ata:InterfaceAccount<'info,TokenAccount>,
 
-    #[account(
-        init_if_needed,
-        payer = user,
-        space = 8 + UserVaultData::INIT_SPACE,
-        seeds = [WHITELISTED_ENTRY.as_bytes(),user.key().as_ref()],
-        bump
-    )]
-    pub user_vault_data:Account<'info,UserVaultData>,
+    /// Checking it manually to save CU's Maybe!!
+    pub user_vault_data:Account<'info,UserVaultAccount>,
 
     pub associated_token_program:Program<'info,AssociatedToken>,
     pub token_program:Interface<'info,TokenInterface>,
@@ -54,7 +48,16 @@ pub struct Deposit<'info> {
 
 
 impl<'info> Deposit<'info> {
-    pub fn deposit(&mut self, deposit_amount:u64, seeds:u64,bumps:&DepositBumps)->Result<()> {
+    pub fn deposit(&mut self, deposit_amount:u64,seeds:u64)->Result<()> {
+
+        let (expected_key,bump) = Pubkey::find_program_address(
+            &[WHITELISTED_ENTRY.as_bytes(),self.user.key().as_ref(),self.mint.key().as_ref(),self.vault.seeds.to_le_bytes().as_ref()]
+                    , &crate::id());
+
+        require_eq!(self.user_vault_data.key(),expected_key,VaultError::AccountMisMatch);
+        require_eq!(self.user_vault_data.bump,bump,VaultError::BumpMisMatch);
+        require_eq!(self.user_vault_data.mint,self.mint.key(),VaultError::MintMisMatch);
+        require_eq!(self.user_vault_data.user,self.user.key(),VaultError::UserMisMatch);
 
         require!(self.user_ata.amount >= deposit_amount , VaultError::InsufficientFunds);
 

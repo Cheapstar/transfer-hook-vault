@@ -14,7 +14,7 @@ pub struct Vault {
 
 #[account]
 #[derive(InitSpace)]
-pub struct UserVaultData {
+pub struct UserVaultAccount {
     pub user:Pubkey,
     pub mint:Pubkey,
     pub deposited:u64,

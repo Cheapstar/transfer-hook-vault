@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount,TransferChecked,transfer_checked,TokenInterface};
 
-use crate::state::{UserVaultData, Vault};
+use crate::state::{UserVaultAccount, Vault};
 use crate::error::VaultError;
 use crate::constant::{VAULT, WHITELISTED_ENTRY};
 
@@ -26,12 +26,7 @@ pub struct RemoveUser<'info> {
     )]
     pub vault : Account<'info,Vault>,
 
-    #[account(
-        has_one=user,
-        seeds = [WHITELISTED_ENTRY.as_bytes(),user.as_ref(),seeds.to_be_bytes().as_ref()],
-        bump
-    )]
-    pub user_vault_data:Account<'info,UserVaultData>,
+    pub user_vault_data:Account<'info,UserVaultAccount>,
     pub system_program:Program<'info,System>
 }
 
@@ -39,6 +34,16 @@ pub struct RemoveUser<'info> {
 
 impl<'info> RemoveUser<'info> {
     pub fn remove_user(&mut self, user:Pubkey, seeds:u64,bumps:&RemoveUserBumps)->Result<()> {
+
+        let (expected_key,bump) = Pubkey::find_program_address(
+            &[WHITELISTED_ENTRY.as_bytes(),user.key().as_ref(),self.mint.key().as_ref(),self.vault.seeds.to_le_bytes().as_ref()]
+                    , &crate::id());
+
+        require_eq!(self.user_vault_data.key(),expected_key,VaultError::AccountMisMatch);
+        require_eq!(self.user_vault_data.bump,bump,VaultError::BumpMisMatch);
+        require_eq!(self.user_vault_data.mint,self.mint.key(),VaultError::MintMisMatch);
+        require_eq!(self.user_vault_data.user,user.key(),VaultError::UserMisMatch);
+
 
         // I am trying ki if it has some deposit amount than we disallow it , else we remove it
         if self.user_vault_data.deposited > 0 {

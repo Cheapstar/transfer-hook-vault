@@ -22,11 +22,11 @@ pub mod transfer_hook_vault {
         
     }
     pub fn deposit(ctx:Context<Deposit>,deposit_amount:u64,seeds:u64)->Result<()>{
-        ctx.accounts.deposit(deposit_amount, seeds, &ctx.bumps);
+        ctx.accounts.deposit(deposit_amount, seeds);
         Ok(())
     }
     pub fn withdraw(ctx:Context<WithDraw>,withdraw_amount:u64,seeds:u64)->Result<()>{
-        ctx.accounts.withdraw(withdraw_amount, seeds, &ctx.bumps);
+        ctx.accounts.withdraw(withdraw_amount, seeds);
         Ok(())
     }
 }

@@ -3,7 +3,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount,TransferChecked,transfer_checked,TokenInterface};
 
-use crate::state::{UserVaultData, Vault};
+use crate::state::{UserVaultAccount, Vault};
 use crate::error::VaultError;
 use crate::constant::{VAULT, WHITELISTED_ENTRY};
 
@@ -29,11 +29,11 @@ pub struct AddUser<'info> {
     #[account(
         init_if_needed,
         payer = admin,
-        space = 8 + UserVaultData::INIT_SPACE,
-        seeds = [WHITELISTED_ENTRY.as_bytes(),user.as_ref(),seeds.to_be_bytes().as_ref()],
+        space = 8 + UserVaultAccount::INIT_SPACE,
+        seeds = [WHITELISTED_ENTRY.as_bytes(),user.as_ref(),mint.key().as_ref(),seeds.to_le_bytes().as_ref()],
         bump
     )]
-    pub user_vault_data:Account<'info,UserVaultData>,
+    pub user_vault_data:Account<'info,UserVaultAccount>,
     pub system_program:Program<'info,System>
 }
 
@@ -43,14 +43,14 @@ impl<'info> AddUser<'info> {
     pub fn add_user(&mut self, user:Pubkey, seeds:u64,bumps:&AddUserBumps)->Result<()> {
 
         self.user_vault_data.set_inner(
-            UserVaultData { 
+            UserVaultAccount { 
                 user: user,
                 mint: self.mint.key(),
-                deposited: 0, 
+                deposited: self.user_vault_data.deposited, // since anchor initializes field to zero we can use it for case like this
                 seeds,
                 bump: bumps.user_vault_data,
-                allowed:true
-             }
+                allowed:true        // if this pda exists then we need to turn it to true
+            }
         );
 
         self.vault.number_of_users.checked_add(1).ok_or(VaultError::Overflow)?;

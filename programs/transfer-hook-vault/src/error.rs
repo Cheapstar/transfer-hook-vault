@@ -9,4 +9,21 @@ pub enum VaultError {
     WithdrawTooMuch,
     #[msg("Arithmetic overflow")]
     Overflow,
+    #[msg("OwnerMismatch")]
+    OwnerMisMatch,
+    #[msg("AccountMisMatch")]
+    AccountMisMatch,
+    #[msg("BumpMisMatch")]
+    BumpMisMatch,
+    #[msg("MintMisMatch")]
+    MintMisMatch,
+    #[msg("UserMisMatch")]
+    UserMisMatch,
+    #[msg("User is BlackListed , Cannot Proceed With The Transfer")]
+    BlackListed,
+    #[msg("Invalid Extra Meta")]
+    InvalidExtraMeta,
+    #[msg("Invalid account size")]
+    InvalidAccountSize,
+
 }
