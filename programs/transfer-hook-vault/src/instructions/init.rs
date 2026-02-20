@@ -1,18 +1,18 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::Token, token_interface::{Mint, TokenAccount}};
-use crate::{ID, state::vault::Vault};
+use crate::{ID, constant::VAULT, state::vault::Vault};
 
 
 #[derive(Accounts)]
 #[instruction(seeds:u64)]
-pub struct Initialize<'info> {
+pub struct InitializeVault<'info> {
     #[account(mut)]
     pub admin:Signer<'info>,
 
     #[account(
         init,
         payer=admin,
-        seeds = [b"vault",seeds.to_le_bytes().as_ref()],
+        seeds = [VAULT.as_bytes(),seeds.to_le_bytes().as_ref()],
         space = 8 + Vault::INIT_SPACE,
         bump
 
@@ -34,8 +34,8 @@ pub struct Initialize<'info> {
 }
 
 
-impl<'info> Initialize<'info> {
-    pub fn init_vault(&mut self,seeds:u64,bumps:&InitializeBumps)->Result<()>{
+impl<'info> InitializeVault<'info> {
+    pub fn init_vault(&mut self,seeds:u64,bumps:&InitializeVaultBumps)->Result<()>{
         self.vault.set_inner(
             Vault {
                 admin: *self.admin.key,
@@ -43,6 +43,7 @@ impl<'info> Initialize<'info> {
                 amount: 0,
                 seeds:seeds,
                 bump: bumps.vault,
+                number_of_users:0
             }
         );
 

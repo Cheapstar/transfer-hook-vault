@@ -7,4 +7,6 @@ pub enum VaultError {
     InsufficientFunds,
     #[msg("You cannot Withdraw more than your deposit")]
     WithdrawTooMuch,
+    #[msg("Arithmetic overflow")]
+    Overflow,
 }

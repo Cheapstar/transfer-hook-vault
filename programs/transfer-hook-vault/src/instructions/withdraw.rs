@@ -2,6 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::associated_token::AssociatedToken;
 use anchor_spl::token_interface::{Mint, TokenAccount,TransferChecked,transfer_checked,TokenInterface};
 
+use crate::constant::{VAULT, WHITELISTED_ENTRY};
 use crate::state::{UserVaultData, Vault};
 use crate::error::VaultError;
 
@@ -17,7 +18,7 @@ pub struct WithDraw<'info> {
     #[account(
         mut, 
         has_one = mint,
-        seeds = [b"vault",seeds.to_le_bytes().as_ref()],
+        seeds = [VAULT.as_bytes(),seeds.to_le_bytes().as_ref()],
         bump
     )]
     pub vault : Account<'info,Vault>,
@@ -39,7 +40,7 @@ pub struct WithDraw<'info> {
     #[account(
         has_one = mint,
         has_one = user,
-        seeds = [b"user_vault",user.key().as_ref()],
+        seeds = [WHITELISTED_ENTRY.as_bytes(),user.key().as_ref()],
         bump
     )]
     pub user_vault_data:Account<'info,UserVaultData>,
@@ -58,7 +59,7 @@ impl<'info> WithDraw<'info> {
         
         let binding = seeds.to_le_bytes();
         let vault_seeds = binding.as_ref();
-        let signer_seeds:&[&[u8]] =&[b"vault",vault_seeds,&[self.vault.bump]];
+        let signer_seeds:&[&[u8]] =&[VAULT.as_bytes(),vault_seeds,&[self.vault.bump]];
 
 
         let transfer_acc = TransferChecked {

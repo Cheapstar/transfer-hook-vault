@@ -6,7 +6,7 @@ use anchor_lang::prelude::*;
 mod instructions;
 mod state;
 mod error;
-
+mod constant;
 use instructions::*;
 
 declare_id!("CH6Dm39gnKnBKg2734Ns6j3Qngdz5mkRvHaWn4AfZdtT");
@@ -16,7 +16,7 @@ pub mod transfer_hook_vault {
 
     use super::*;
 
-    pub fn init(ctx:Context<Initialize>,seeds:u64)->Result<()>{
+    pub fn init(ctx:Context<InitializeVault>,seeds:u64)->Result<()>{
         ctx.accounts.init_vault(seeds, &ctx.bumps);
         Ok(())
         
