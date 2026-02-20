@@ -54,10 +54,10 @@ impl<'info> Deposit<'info> {
             &[WHITELISTED_ENTRY.as_bytes(),self.user.key().as_ref(),self.mint.key().as_ref(),self.vault.seeds.to_le_bytes().as_ref()]
                     , &crate::id());
 
-        require_eq!(self.user_vault_data.key(),expected_key,VaultError::AccountMisMatch);
+        require_keys_eq!(self.user_vault_data.key(),expected_key,VaultError::AccountMisMatch);
         require_eq!(self.user_vault_data.bump,bump,VaultError::BumpMisMatch);
-        require_eq!(self.user_vault_data.mint,self.mint.key(),VaultError::MintMisMatch);
-        require_eq!(self.user_vault_data.user,self.user.key(),VaultError::UserMisMatch);
+        require_keys_eq!(self.user_vault_data.mint,self.mint.key(),VaultError::MintMisMatch);
+        require_keys_eq!(self.user_vault_data.user,self.user.key(),VaultError::UserMisMatch);
 
         require!(self.user_ata.amount >= deposit_amount , VaultError::InsufficientFunds);
 
@@ -71,9 +71,9 @@ impl<'info> Deposit<'info> {
         let cpi_program = self.token_program.to_account_info();
         let transfer_ctx = CpiContext::new(cpi_program, transfer_acc);
 
-        transfer_checked(transfer_ctx, deposit_amount, self.mint.decimals);
+        transfer_checked(transfer_ctx, deposit_amount, self.mint.decimals)?;
 
-        self.user_vault_data.deposited.checked_add(deposit_amount).ok_or(VaultError::Overflow);
+        self.user_vault_data.deposited.checked_add(deposit_amount).ok_or(VaultError::Overflow)?;
 
         Ok(())
     }

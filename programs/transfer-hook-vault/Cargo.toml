@@ -25,6 +25,7 @@ anchor-lang = { version = "0.31.1", features = ["init-if-needed"] }
 anchor-spl="0.31.1"
 spl-tlv-account-resolution = "0.11.1"
 spl-transfer-hook-interface = "2.1.0"
+spl-discriminator = "0.5.1"
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(target_os, values("solana"))'] }

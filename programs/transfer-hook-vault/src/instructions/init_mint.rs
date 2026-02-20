@@ -1,9 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token_interface::{Mint, TokenAccount, TokenInterface,mint_to,MintTo}};
 
-use crate::ID;
-
-
 
 #[derive(Accounts)]
 #[instruction(mint_config:MintConfig)]
@@ -65,7 +62,7 @@ pub struct MintTokens<'info> {
 
 
 impl<'info> MintTokens<'info> {
-    pub fn mint(&mut self,amount:u64){
+    pub fn mint(&mut self,amount:u64)->Result<()>{
         
         let cpi_program = self.token_program.to_account_info();
         let mint_to_acc = MintTo{
@@ -75,7 +72,8 @@ impl<'info> MintTokens<'info> {
         };
 
         let cpi_ctx = CpiContext::new(cpi_program, mint_to_acc);
-        mint_to(cpi_ctx, amount).unwrap();
+        mint_to(cpi_ctx, amount)?;
+        Ok(())
     }
 }
 

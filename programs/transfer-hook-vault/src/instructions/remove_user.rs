@@ -1,7 +1,6 @@
 
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token_interface::{Mint, TokenAccount,TransferChecked,transfer_checked,TokenInterface};
+use anchor_spl::token_interface::{Mint};
 
 use crate::state::{UserVaultAccount, Vault};
 use crate::error::VaultError;
@@ -39,10 +38,10 @@ impl<'info> RemoveUser<'info> {
             &[WHITELISTED_ENTRY.as_bytes(),user.key().as_ref(),self.mint.key().as_ref(),self.vault.seeds.to_le_bytes().as_ref()]
                     , &crate::id());
 
-        require_eq!(self.user_vault_data.key(),expected_key,VaultError::AccountMisMatch);
+        require_keys_eq!(self.user_vault_data.key(),expected_key,VaultError::AccountMisMatch);
         require_eq!(self.user_vault_data.bump,bump,VaultError::BumpMisMatch);
-        require_eq!(self.user_vault_data.mint,self.mint.key(),VaultError::MintMisMatch);
-        require_eq!(self.user_vault_data.user,user.key(),VaultError::UserMisMatch);
+        require_keys_eq!(self.user_vault_data.mint,self.mint.key(),VaultError::MintMisMatch);
+        require_keys_eq!(self.user_vault_data.user,user.key(),VaultError::UserMisMatch);
 
 
         // I am trying ki if it has some deposit amount than we disallow it , else we remove it

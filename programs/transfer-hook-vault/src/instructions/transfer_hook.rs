@@ -1,7 +1,10 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::AssociatedToken, token_2022::spl_token_2022::{extension::{BaseStateWithExtensions, PodStateWithExtensionsMut, transfer_hook::TransferHookAccount}, pod::PodAccount}, token_interface::{Mint, TokenAccount, TokenInterface}};
+use anchor_spl::{ 
+    token_2022::spl_token_2022::{
+        extension::{BaseStateWithExtensions, PodStateWithExtensionsMut, transfer_hook::TransferHookAccount}, 
+        pod::PodAccount}, token_interface::{Mint, TokenAccount}};
 
-use crate::{constant::{EXTRA_ACCOUNT_META, WHITELISTED_ENTRY}, state::UserVaultAccount,error::VaultError};
+use crate::{constant::{EXTRA_ACCOUNT_META}, state::UserVaultAccount,error::VaultError};
 
 
 /// should this Transfer Hook only work when we deposit or withdraw from vault or for any transfer
@@ -45,7 +48,7 @@ impl<'info> TransferHook<'info> {
 
 
 
-        require_eq!(self.owner.key(),user_vault_data.user,VaultError::OwnerMisMatch);
+        require_keys_eq!(self.owner.key(),user_vault_data.user,VaultError::OwnerMisMatch);
         require!(user_vault_data.allowed,VaultError::BlackListed);
         Ok(())
     }

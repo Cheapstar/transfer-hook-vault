@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::{associated_token::AssociatedToken, token::Token, token_interface::{Mint, TokenAccount}};
-use crate::{ID, constant::VAULT, state::vault::Vault};
+use crate::{ constant::VAULT, state::vault::Vault};
 
 
 #[derive(Accounts)]

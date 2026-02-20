@@ -1,7 +1,6 @@
 
 use anchor_lang::prelude::*;
-use anchor_spl::associated_token::AssociatedToken;
-use anchor_spl::token_interface::{Mint, TokenAccount,TransferChecked,transfer_checked,TokenInterface};
+use anchor_spl::token_interface::{Mint};
 
 use crate::state::{UserVaultAccount, Vault};
 use crate::error::VaultError;
