@@ -1,3 +1,3 @@
 pub mod vault;
 
-use vault::*;
+pub use vault::*;

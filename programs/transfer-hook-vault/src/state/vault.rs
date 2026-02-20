@@ -9,3 +9,13 @@ pub struct Vault {
     pub seeds:u64,
     pub bump:u8
 }
+
+
+#[account]
+#[derive(InitSpace)]
+pub struct UserVaultData {
+    pub user:Pubkey,
+    pub mint:Pubkey,
+    pub deposited:u64,
+    pub bump:u8
+}
