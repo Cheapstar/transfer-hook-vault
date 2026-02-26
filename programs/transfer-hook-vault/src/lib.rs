@@ -8,7 +8,9 @@ mod instructions;
 mod state;
 mod error;
 mod constant;
+mod tests;
 use instructions::*;
+
 
 declare_id!("CH6Dm39gnKnBKg2734Ns6j3Qngdz5mkRvHaWn4AfZdtT");
 

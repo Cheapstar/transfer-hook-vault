@@ -6,7 +6,8 @@ describe("transfer-hook-vault", () => {
   // Configure the client to use the local cluster.
   anchor.setProvider(anchor.AnchorProvider.env());
 
-  const program = anchor.workspace.transferHookVault as Program<TransferHookVault>;
+  const program = anchor.workspace
+    .transferHookVault as Program<TransferHookVault>;
 
   it("Is initialized!", async () => {
     // Add your test here.
