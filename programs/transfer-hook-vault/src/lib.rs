@@ -26,8 +26,8 @@ pub mod transfer_hook_vault {
         ctx.accounts.deposit(deposit_amount)?;
         Ok(())
     }
-    pub fn withdraw(ctx: Context<WithDraw>, withdraw_amount: u64, seeds: u64) -> Result<()> {
-        ctx.accounts.withdraw(withdraw_amount, seeds)?;
+    pub fn withdraw(ctx: Context<WithDraw>, withdraw_amount: u64) -> Result<()> {
+        ctx.accounts.withdraw(withdraw_amount)?;
         Ok(())
     }
 
@@ -39,16 +39,16 @@ pub mod transfer_hook_vault {
         ctx.accounts.mint(amount)?;
         Ok(())
     }
-    pub fn init_meta_list(ctx: Context<InitializeExtraAccountMetaList>, seeds: u64) -> Result<()> {
-        ctx.accounts.initialize_meta_list(seeds, &ctx.bumps)?;
+    pub fn init_meta_list(ctx: Context<InitializeExtraAccountMetaList>) -> Result<()> {
+        ctx.accounts.initialize_meta_list(&ctx.bumps)?;
         Ok(())
     }
-    pub fn add_to_whitelist(ctx: Context<AddUser>, user: Pubkey, seeds: u64) -> Result<()> {
-        ctx.accounts.add_user(user, seeds, &ctx.bumps)?;
+    pub fn add_to_whitelist(ctx: Context<AddUser>, user: Pubkey) -> Result<()> {
+        ctx.accounts.add_user(user, &ctx.bumps)?;
         Ok(())
     }
-    pub fn remove_from_whitelist(ctx: Context<RemoveUser>, user: Pubkey, seeds: u64) -> Result<()> {
-        ctx.accounts.remove_user(user, seeds, &ctx.bumps)?;
+    pub fn remove_from_whitelist(ctx: Context<RemoveUser>, user: Pubkey) -> Result<()> {
+        ctx.accounts.remove_user(user, &ctx.bumps)?;
         Ok(())
     }
 

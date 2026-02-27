@@ -8,7 +8,6 @@ use crate::constant::{VAULT, WHITELISTED_ENTRY};
 
 // all this does is transfer from user_ata to vault_ata
 #[derive(Accounts)]
-#[instruction(user:Pubkey,seeds:u64)]
 pub struct RemoveUser<'info> {
     #[account(mut)]
     pub admin:Signer<'info>,
@@ -20,7 +19,7 @@ pub struct RemoveUser<'info> {
         mut, 
         has_one = mint,
         has_one = admin,
-        seeds = [VAULT.as_bytes(),seeds.to_le_bytes().as_ref()],
+        seeds = [VAULT.as_bytes(),vault.seeds.to_le_bytes().as_ref()],
         bump
     )]
     pub vault : Account<'info,Vault>,
@@ -32,7 +31,7 @@ pub struct RemoveUser<'info> {
 
 
 impl<'info> RemoveUser<'info> {
-    pub fn remove_user(&mut self, user:Pubkey, seeds:u64,bumps:&RemoveUserBumps)->Result<()> {
+    pub fn remove_user(&mut self, user:Pubkey,bumps:&RemoveUserBumps)->Result<()> {
 
         let (expected_key,bump) = Pubkey::find_program_address(
             &[WHITELISTED_ENTRY.as_bytes(),user.key().as_ref(),self.mint.key().as_ref(),self.vault.seeds.to_le_bytes().as_ref()]

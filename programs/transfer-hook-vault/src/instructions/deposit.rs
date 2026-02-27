@@ -26,24 +26,15 @@ pub struct Deposit<'info> {
         mut,
         associated_token::mint = mint,
         associated_token::authority = user,
-            associated_token::token_program = token_program, 
-
+        associated_token::token_program = token_program, 
     )]
     pub user_ata:InterfaceAccount<'info,TokenAccount>,
 
-    #[account(
-        mut,
-        associated_token::mint = mint,
-        associated_token::authority = vault,
-            associated_token::token_program = token_program,  
-
-    )]
-    pub vault_ata:InterfaceAccount<'info,TokenAccount>,
-
+    #[account(mut)]
     /// Checking it manually to save CU's Maybe!!
     pub user_vault_data:Account<'info,UserVaultAccount>,
 
-    pub associated_token_program:Program<'info,AssociatedToken>,
+    /// THIS IS GIVEN AS I AM USING TOKEN2022 PROGRAM
     pub token_program:Interface<'info,TokenInterface>,
     pub system_program:Program<'info,System>
 }
@@ -64,20 +55,11 @@ impl<'info> Deposit<'info> {
         require_keys_eq!(self.user_vault_data.user,self.user.key(),VaultError::UserMisMatch);
 
         require!(self.user_ata.amount >= deposit_amount , VaultError::InsufficientFunds);
+        
+        // TRANSFER NEEDED TO BE DONE MANUALLY AS TRANSFER HOOK IS DEFINED IN THE SAME PROGRAM SO REENTRANCY ERROR WILL OCCUR
+        self.vault.amount = self.vault.amount.checked_add(deposit_amount).ok_or(VaultError::Overflow)?;
 
-        let transfer_acc = TransferChecked {
-            from: self.user_ata.to_account_info(),
-            mint: self.mint.to_account_info(),
-            to: self.vault_ata.to_account_info(),
-            authority: self.user.to_account_info(),
-        };
-
-        let cpi_program = self.token_program.to_account_info();
-        let transfer_ctx = CpiContext::new(cpi_program, transfer_acc);
-
-        transfer_checked(transfer_ctx, deposit_amount, self.mint.decimals)?;
-
-        self.user_vault_data.deposited.checked_add(deposit_amount).ok_or(VaultError::Overflow)?;
+        self.user_vault_data.deposited = self.user_vault_data.deposited.checked_add(deposit_amount).ok_or(VaultError::Overflow)?;
 
 
         msg!("Tokens Successfully Deposited");

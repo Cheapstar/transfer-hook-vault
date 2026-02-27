@@ -8,7 +8,6 @@ use spl_transfer_hook_interface::instruction::ExecuteInstruction;
 use crate::{constant::{EXTRA_ACCOUNT_META, VAULT, WHITELISTED_ENTRY}, error::VaultError, state::Vault};
 
 #[derive(Accounts)]
-#[instruction(seeds:u64)]
 pub struct InitializeExtraAccountMetaList<'info> {
     #[account(mut)]
     pub admin:Signer<'info>,
@@ -26,7 +25,7 @@ pub struct InitializeExtraAccountMetaList<'info> {
         mut, 
         has_one = mint,
         has_one = admin,
-        seeds = [VAULT.as_bytes(),seeds.to_le_bytes().as_ref()],
+        seeds = [VAULT.as_bytes(),vault.seeds.to_le_bytes().as_ref()],
         bump
     )]
     pub vault : Account<'info,Vault>,
@@ -38,19 +37,19 @@ pub struct InitializeExtraAccountMetaList<'info> {
 }
 
 impl<'info> InitializeExtraAccountMetaList<'info> {
-    pub fn initialize_meta_list(&mut self,seeds:u64,bumps:&InitializeExtraAccountMetaListBumps)->Result<()>{
+    pub fn initialize_meta_list(&mut self,bumps:&InitializeExtraAccountMetaListBumps)->Result<()>{
         let account_metas = vec![
             // user_vault_account 
               ExtraAccountMeta::new_with_seeds(
                 &[
                     Seed::Literal { bytes: WHITELISTED_ENTRY.as_bytes().to_vec() },
                     Seed::AccountKey { index: 3 },
-                    Seed::AccountKey { index: 2},
+                    Seed::AccountKey { index: 1},
                     Seed::Literal { bytes: self.vault.seeds.to_le_bytes().to_vec() }
                 ], 
                 false,
                 false
-            ).map_err(|_| VaultError::InvalidExtraMeta)?
+            ).map_err(|_| VaultError::InvalidExtraMeta)?,
         ];
         // calculate account size
         let account_size = ExtraAccountMetaList::size_of(account_metas.len())

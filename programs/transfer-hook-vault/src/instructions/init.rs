@@ -42,6 +42,7 @@ impl<'info> InitializeVault<'info> {
             Vault {
                 admin: *self.admin.key,
                 mint: self.mint.key(),
+                ata:self.vault_ata.key(),
                 amount: 0,
                 seeds:seeds,
                 bump: bumps.vault,

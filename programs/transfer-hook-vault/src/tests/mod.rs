@@ -1,14 +1,17 @@
 #[cfg(test)]
 mod test {
     use crate::{
-        constant::{VAULT, WHITELISTED_ENTRY},
+        constant::{EXTRA_ACCOUNT_META, VAULT, WHITELISTED_ENTRY},
         tests::test,
     };
     use anchor_lang::solana_program::program_pack::Pack;
     use anchor_spl::associated_token::{
         self, get_associated_token_address, spl_associated_token_account,
     };
-    use litesvm_token::spl_token::{self, state::Account as Token2022Account, ID as TOKEN_PROGRAM};
+    use litesvm_token::{
+        spl_token::{self, state::Account as Token2022Account, ID as TOKEN_PROGRAM},
+        Transfer,
+    };
     use spl_token_2022::ID as TOKEN_2022_PROGRAM;
 
     use {
@@ -269,7 +272,6 @@ mod test {
                 .to_vec(),
                 data: crate::instruction::AddToWhitelist {
                     user: whitelisted_user,
-                    seeds: SECURITY_SEEDS,
                 }
                 .data(),
             };
@@ -285,6 +287,42 @@ mod test {
             println!("{}", result.pretty_logs());
 
             println!("[Test] User Whitelisted Successfully");
+        }
+
+        pub fn init_meta_list(&mut self) {
+            println!("[Test] Metalist Init Tokens");
+
+            let (extra_meta_list, _) = Pubkey::find_program_address(
+                &[EXTRA_ACCOUNT_META.as_bytes(), self.mint.pubkey().as_ref()],
+                &PROGRAM_ID,
+            );
+            let init_extra_meta_list = Instruction {
+                program_id: PROGRAM_ID,
+                accounts: crate::accounts::InitializeExtraAccountMetaList {
+                    admin: self.admin.pubkey(),
+                    extra_account_meta_list: extra_meta_list,
+                    vault: self.vault,
+                    mint: self.mint.pubkey(),
+                    token_program: TOKEN_2022_PROGRAM,
+                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM,
+                    system_program: SYSTEM_PROGRAM,
+                }
+                .to_account_metas(None)
+                .to_vec(),
+                data: crate::instruction::InitMetaList {}.data(),
+            };
+
+            let message = Message::new(&[init_extra_meta_list], Some(&self.admin.pubkey()));
+
+            let tx = Transaction::new(&[&self.admin], message, self.svm.latest_blockhash());
+
+            let result = self.svm.send_transaction(tx).unwrap();
+            for log in &result.logs {
+                println!("{}", log);
+            }
+            println!("{}", result.pretty_logs());
+
+            println!("[Test] Metalist Init Successfully");
         }
 
         pub fn deposit(&mut self, deposit_amount: u64, is_admin: bool) {
@@ -304,8 +342,6 @@ mod test {
                     vault: self.vault,
                     user_ata: deposit_user_ata,
                     user_vault_data: deposit_user_data,
-                    vault_ata: self.vault_ata,
-                    associated_token_program: ASSOCIATED_TOKEN_PROGRAM,
                     token_program: TOKEN_2022_PROGRAM,
                     system_program: SYSTEM_PROGRAM,
                 }
@@ -319,6 +355,16 @@ mod test {
 
             let message = Message::new(&[deposit_tokens_ix], Some(&deposit_user.pubkey()));
 
+            // admin to vault
+            transfer_tokens(
+                deposit_user,
+                deposit_user_ata,
+                self.vault_ata,
+                &mut self.svm,
+                self.mint.pubkey(),
+                deposit_amount,
+                deposit_user_data,
+            );
             let tx = Transaction::new(&[deposit_user], message, self.svm.latest_blockhash());
 
             let result = self.svm.send_transaction(tx).unwrap();
@@ -327,7 +373,59 @@ mod test {
             }
             println!("{}", result.pretty_logs());
 
-            println!("[Test] User Whitelisted Successfully");
+            println!("[Test] Deposited Successfully");
+        }
+
+        pub fn withdraw(&mut self, withdraw_amount: u64, is_admin: bool) {
+            println!("[Test] Deposit Tokens");
+
+            let (withdraw_user, withdraw_user_ata, withdraw_user_data) = if is_admin {
+                (&self.admin, self.admin_ata, self.admin_vault_data)
+            } else {
+                (&self.user, self.user_ata, self.user_vault_data)
+            };
+
+            let withdraw_tokens_ix = Instruction {
+                program_id: PROGRAM_ID,
+                accounts: crate::accounts::WithDraw {
+                    user: withdraw_user.pubkey(),
+                    mint: self.mint.pubkey(),
+                    vault: self.vault,
+                    user_ata: withdraw_user_ata,
+                    user_vault_data: withdraw_user_data,
+                    vault_ata: self.vault_ata,
+                    token_program: TOKEN_2022_PROGRAM,
+                    system_program: SYSTEM_PROGRAM,
+                }
+                .to_account_metas(None)
+                .to_vec(),
+                data: crate::instruction::Withdraw {
+                    withdraw_amount: withdraw_amount,
+                }
+                .data(),
+            };
+
+            let message = Message::new(&[withdraw_tokens_ix], Some(&withdraw_user.pubkey()));
+
+            let tx = Transaction::new(&[withdraw_user], message, self.svm.latest_blockhash());
+
+            let result = self.svm.send_transaction(tx).unwrap();
+            // delegated to user to vault
+            transfer_tokens(
+                withdraw_user,
+                self.vault_ata,
+                withdraw_user_ata,
+                &mut self.svm,
+                self.mint.pubkey(),
+                withdraw_amount,
+                withdraw_user_data,
+            );
+            for log in &result.logs {
+                println!("{}", log);
+            }
+            println!("{}", result.pretty_logs());
+
+            println!("[Test] Deposited Successfully");
         }
 
         pub fn assert_ata(&self, owner: &Pubkey, mint: &Pubkey, ata: &Pubkey, amount: u64) {
@@ -338,94 +436,119 @@ mod test {
         }
     }
 
-    pub fn create_ata(svm: &mut LiteSVM, payer: &Keypair, mint: &Pubkey) -> Pubkey {
-        println!("Creating ATA");
-        let ata = CreateAssociatedTokenAccount::new(svm, payer, mint)
-            .owner(&payer.pubkey())
-            .send()
-            .unwrap();
+    pub fn transfer_tokens(
+        payer: &Keypair,
+        from: Pubkey,
+        to: Pubkey,
+        svm: &mut LiteSVM,
+        mint: Pubkey,
+        amount: u64,
+        user_vault: Pubkey,
+    ) {
+        println!("Transfering Tokens {} from {} to {}", amount, from, to);
+        let (extra_account_meta_list, _) = Pubkey::find_program_address(
+            &[EXTRA_ACCOUNT_META.as_bytes(), mint.as_ref()],
+            &PROGRAM_ID,
+        );
 
-        println!("Associated Token Account Created");
-        ata
+        let mut ix = spl_token_2022::instruction::transfer_checked(
+            &TOKEN_2022_PROGRAM,
+            &from,
+            &mint,
+            &to,
+            &payer.pubkey(), // owner of `from`
+            &[&payer.pubkey()],
+            amount,
+            6,
+        )
+        .unwrap();
+
+        ix.accounts
+            .push(AccountMeta::new_readonly(PROGRAM_ID, false));
+        ix.accounts
+            .push(AccountMeta::new_readonly(extra_account_meta_list, false));
+        ix.accounts
+            .push(AccountMeta::new_readonly(user_vault, false));
+
+        let message = Message::new(&[ix], Some(&payer.pubkey()));
+        let tx = Transaction::new(&[payer], message, svm.latest_blockhash());
+        svm.send_transaction(tx).unwrap();
     }
 
-    // #[test]
-    // pub fn init_mint_test() {
-    //     println!("[Init Mint] : Testing ");
-    //     let mut test_config = TestConfig::new();
+    #[test]
+    pub fn init_mint_test() {
+        println!("[Init Mint] : Testing ");
+        let mut test_config = TestConfig::new();
 
-    //     let mint = test_config.init_mint_ix();
+        let mint = test_config.init_mint_ix();
 
-    //     println!("[Init Mint] : Succesful");
-    // }
+        println!("[Init Mint] : Succesful");
+    }
 
-    // #[test]
-    // pub fn init_vault() {
-    //     println!("[Init Vault] : Testing ");
-    //     let mut test_config = TestConfig::new();
+    #[test]
+    pub fn init_vault() {
+        println!("[Init Vault] : Testing ");
+        let mut test_config = TestConfig::new();
 
-    //     test_config.init_mint_ix();
-    //     test_config.init_vault();
+        test_config.init_mint_ix();
+        test_config.init_vault();
 
-    //     let vault_account = test_config.svm.get_account(&test_config.vault).unwrap();
-    //     let vault_data =
-    //         crate::state::Vault::try_deserialize(&mut vault_account.data.as_ref()).unwrap();
+        let vault_account = test_config.svm.get_account(&test_config.vault).unwrap();
+        let vault_data =
+            crate::state::Vault::try_deserialize(&mut vault_account.data.as_ref()).unwrap();
 
-    //     println!("Vault \n");
-    //     println!("{{");
-    //     println!("\tadmin : {}", vault_data.admin);
-    //     println!("\tmint : {}", vault_data.mint);
-    //     println!("\tamount : {}", vault_data.amount);
-    //     println!("\tseeds : {}", vault_data.seeds);
-    //     println!("\tnumber_of_users : {}", vault_data.number_of_users);
-    //     println!("}}");
+        println!("Vault \n");
+        println!("{{");
+        println!("\tadmin : {}", vault_data.admin);
+        println!("\tmint : {}", vault_data.mint);
+        println!("\tamount : {}", vault_data.amount);
+        println!("\tseeds : {}", vault_data.seeds);
+        println!("\tnumber_of_users : {}", vault_data.number_of_users);
+        println!("}}");
 
-    //     println!("[Init Vault] : Succesfull");
-    // }
+        println!("[Init Vault] : Succesfull");
+    }
 
-    // #[test]
-    // pub fn mint_tokens() {
-    //     println!("[Mint Tokens] : Testing ");
-    //     let mut test_config = TestConfig::new();
+    #[test]
+    pub fn mint_tokens() {
+        println!("[Mint Tokens] : Testing ");
+        let mut test_config = TestConfig::new();
 
-    //     test_config.init_mint_ix();
-    //     test_config.mint_tokens(test_config.admin_ata);
-    //     test_config.assert_ata(
-    //         &test_config.admin_ata,
-    //         &test_config.mint.pubkey(),
-    //         &test_config.admin_ata,
-    //         1000,
-    //     );
+        test_config.init_mint_ix();
+        test_config.mint_tokens(test_config.admin_ata);
+        test_config.assert_ata(
+            &test_config.admin_ata,
+            &test_config.mint.pubkey(),
+            &test_config.admin_ata,
+            1000,
+        );
 
-    //     println!("[Mint Tokens] : Succesfull");
-    // }
-    // #[test]
-    // pub fn whitelist_user() {
-    //     println!("[Whitelist User] : Testing ");
-    //     let mut test_config = TestConfig::new();
+        println!("[Mint Tokens] : Succesfull");
+    }
+    #[test]
+    pub fn whitelist_user() {
+        println!("[Whitelist User] : Testing ");
+        let mut test_config = TestConfig::new();
 
-    //     test_config.init_mint_ix();
-    //     test_config.init_vault();
-    //     test_config.add_user(test_config.admin.pubkey(), test_config.admin_vault_data);
+        test_config.init_mint_ix();
+        test_config.init_vault();
+        test_config.add_user(test_config.admin.pubkey(), test_config.admin_vault_data);
 
-    //     println!("[Whitelist user] : Succesfull");
-    // }
+        println!("[Whitelist user] : Succesfull");
+    }
 
     #[test]
     pub fn deposit_test() {
         println!("[Deposit Tokens] : Testing ");
 
         let mut test_config = TestConfig::new();
-        let result_pda =
-            get_associated_token_address(&test_config.admin.pubkey(), &test_config.mint.pubkey());
-        println!("Expected {}", result_pda);
+
         let deposit_amount = 500;
         test_config.init_mint_ix();
         test_config.init_vault();
+        test_config.init_meta_list();
         test_config.mint_tokens(test_config.admin_ata);
         test_config.add_user(test_config.admin.pubkey(), test_config.admin_vault_data);
-
-        println!("VAULT : {}", test_config.vault);
 
         test_config.deposit(deposit_amount, true);
 
@@ -445,6 +568,54 @@ mod test {
         );
 
         println!("[Deposit Tokens] : Succesfull");
+    }
+
+    #[test]
+    pub fn withdraw_test() {
+        println!("[Withdraw Tokens] : Testing ");
+
+        let mut test_config = TestConfig::new();
+
+        let deposit_amount = 500;
+        test_config.init_mint_ix();
+        test_config.init_vault();
+        test_config.init_meta_list();
+        test_config.mint_tokens(test_config.admin_ata);
+        test_config.add_user(test_config.admin.pubkey(), test_config.admin_vault_data);
+
+        test_config.deposit(deposit_amount, true);
+        test_config.assert_ata(
+            &test_config.vault,
+            &test_config.mint.pubkey(),
+            &test_config.vault_ata,
+            deposit_amount,
+        );
+
+        // had 1000 tokens now 500 deposited , i am tired
+        test_config.assert_ata(
+            &test_config.admin.pubkey(),
+            &test_config.mint.pubkey(),
+            &test_config.admin_ata,
+            deposit_amount,
+        );
+
+        test_config.withdraw(deposit_amount, true);
+
+        test_config.assert_ata(
+            &test_config.vault,
+            &test_config.mint.pubkey(),
+            &test_config.vault_ata,
+            0,
+        );
+
+        test_config.assert_ata(
+            &test_config.admin.pubkey(),
+            &test_config.mint.pubkey(),
+            &test_config.admin_ata,
+            1000,
+        );
+
+        println!("[Withdraw Tokens] : Succesfully");
     }
 
     /// this is because of the dependency error

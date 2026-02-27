@@ -4,7 +4,7 @@ use anchor_spl::{
         extension::{BaseStateWithExtensions, PodStateWithExtensionsMut, transfer_hook::TransferHookAccount}, 
         pod::PodAccount}, token_interface::{Mint, TokenAccount}};
 
-use crate::{constant::{EXTRA_ACCOUNT_META}, state::UserVaultAccount,error::VaultError};
+use crate::{constant::EXTRA_ACCOUNT_META, error::VaultError, state::{UserVaultAccount, Vault}};
 
 
 /// should this Transfer Hook only work when we deposit or withdraw from vault or for any transfer
@@ -13,7 +13,6 @@ pub struct TransferHook<'info> {
     // pehle 4 accounts will be the same in the same order
     #[account(
         token::mint = mint, 
-        token::authority = owner,
     )]
     pub source_token: InterfaceAccount<'info, TokenAccount>,
     pub mint: InterfaceAccount<'info, Mint>,
@@ -32,24 +31,28 @@ pub struct TransferHook<'info> {
 
     /// we need whitelist PDA, we will check it manually
     /// CHECK: it needs seeds , which we don't have here
-    pub user_vault:UncheckedAccount<'info>
+    pub user_vault:UncheckedAccount<'info>,
 }
 
 impl<'info> TransferHook<'info> {
     pub fn transfer_hook(&mut self,amount:u64)->Result<()>{
         self.check_is_transferring()?;
-
-        let user_vault_account_info = &self.user_vault.to_account_info();
-
-        let data_ref = user_vault_account_info.try_borrow_data()?;
-        let mut data_slice: &[u8] = &data_ref;
-
-        let user_vault_data = UserVaultAccount::try_deserialize(&mut data_slice)?;
+        
+        
 
 
+        
+                let user_vault_account_info = &self.user_vault.to_account_info();
+        
+                let data_ref = user_vault_account_info.try_borrow_data()?;
+                let mut data_slice: &[u8] = &data_ref;
+        
+                let user_vault_data = UserVaultAccount::try_deserialize(&mut data_slice)?;
+        
+        
+        
+                require!(user_vault_data.allowed,VaultError::BlackListed);
 
-        require_keys_eq!(self.owner.key(),user_vault_data.user,VaultError::OwnerMisMatch);
-        require!(user_vault_data.allowed,VaultError::BlackListed);
         Ok(())
     }
 

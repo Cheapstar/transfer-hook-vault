@@ -8,7 +8,7 @@ use crate::constant::{VAULT, WHITELISTED_ENTRY};
 
 // all this does is transfer from user_ata to vault_ata
 #[derive(Accounts)]
-#[instruction(user:Pubkey,seeds:u64)]
+#[instruction(user:Pubkey)]
 pub struct AddUser<'info> {
     #[account(mut)]
     pub admin:Signer<'info>,
@@ -20,7 +20,7 @@ pub struct AddUser<'info> {
         mut, 
         has_one = mint,
         has_one = admin,
-        seeds = [VAULT.as_bytes(),seeds.to_le_bytes().as_ref()],
+        seeds = [VAULT.as_bytes(),vault.seeds.to_le_bytes().as_ref()],
         bump
     )]
     pub vault : Account<'info,Vault>,
@@ -29,7 +29,7 @@ pub struct AddUser<'info> {
         init_if_needed,
         payer = admin,
         space = 8 + UserVaultAccount::INIT_SPACE,
-        seeds = [WHITELISTED_ENTRY.as_bytes(),user.as_ref(),mint.key().as_ref(),seeds.to_le_bytes().as_ref()],
+        seeds = [WHITELISTED_ENTRY.as_bytes(),user.as_ref(),mint.key().as_ref(),vault.seeds.to_le_bytes().as_ref()],
         bump
     )]
     pub user_vault_data:Account<'info,UserVaultAccount>,
@@ -39,7 +39,7 @@ pub struct AddUser<'info> {
 
 
 impl<'info> AddUser<'info> {
-    pub fn add_user(&mut self, user:Pubkey, seeds:u64,bumps:&AddUserBumps)->Result<()> {
+    pub fn add_user(&mut self, user:Pubkey,bumps:&AddUserBumps)->Result<()> {
 
         msg!("Adding User to Whitelist");
         self.user_vault_data.set_inner(
@@ -47,7 +47,7 @@ impl<'info> AddUser<'info> {
                 user: user,
                 mint: self.mint.key(),
                 deposited: self.user_vault_data.deposited, // since anchor initializes field to zero we can use it for case like this
-                seeds,
+                seeds:self.vault.seeds,
                 bump: bumps.user_vault_data,
                 allowed:true        // if this pda exists then we need to turn it to true
             }

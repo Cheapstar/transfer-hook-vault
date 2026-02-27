@@ -5,6 +5,7 @@ use anchor_lang::prelude::*;
 pub struct Vault {
     pub admin: Pubkey,
     pub mint: Pubkey,
+    pub ata: Pubkey,
     pub amount: u64,
     pub seeds: u64,
     pub number_of_users: u64,
