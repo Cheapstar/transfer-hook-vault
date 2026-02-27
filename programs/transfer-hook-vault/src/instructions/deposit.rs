@@ -8,7 +8,6 @@ use crate::error::VaultError;
 
 // all this does is transfer from user_ata to vault_ata
 #[derive(Accounts)]
-#[instruction(seeds:u64)]
 pub struct Deposit<'info> {
     #[account(mut)]
     pub user:Signer<'info>,
@@ -18,7 +17,7 @@ pub struct Deposit<'info> {
     #[account(
         mut, 
         has_one = mint,
-        seeds = [VAULT.as_bytes(),seeds.to_le_bytes().as_ref()],
+        seeds = [VAULT.as_bytes(),vault.seeds.to_le_bytes().as_ref()],
         bump
     )]
     pub vault : Account<'info,Vault>,
@@ -26,14 +25,18 @@ pub struct Deposit<'info> {
     #[account(
         mut,
         associated_token::mint = mint,
-        associated_token::authority = user
+        associated_token::authority = user,
+            associated_token::token_program = token_program, 
+
     )]
     pub user_ata:InterfaceAccount<'info,TokenAccount>,
 
     #[account(
         mut,
         associated_token::mint = mint,
-        associated_token::authority = vault
+        associated_token::authority = vault,
+            associated_token::token_program = token_program,  
+
     )]
     pub vault_ata:InterfaceAccount<'info,TokenAccount>,
 
@@ -48,8 +51,9 @@ pub struct Deposit<'info> {
 
 
 impl<'info> Deposit<'info> {
-    pub fn deposit(&mut self, deposit_amount:u64,seeds:u64)->Result<()> {
+    pub fn deposit(&mut self, deposit_amount:u64)->Result<()> {
 
+        msg!("Depositing Tokens : {} ", deposit_amount);
         let (expected_key,bump) = Pubkey::find_program_address(
             &[WHITELISTED_ENTRY.as_bytes(),self.user.key().as_ref(),self.mint.key().as_ref(),self.vault.seeds.to_le_bytes().as_ref()]
                     , &crate::id());
@@ -65,7 +69,7 @@ impl<'info> Deposit<'info> {
             from: self.user_ata.to_account_info(),
             mint: self.mint.to_account_info(),
             to: self.vault_ata.to_account_info(),
-            authority: self.vault.to_account_info(),
+            authority: self.user.to_account_info(),
         };
 
         let cpi_program = self.token_program.to_account_info();
@@ -75,6 +79,8 @@ impl<'info> Deposit<'info> {
 
         self.user_vault_data.deposited.checked_add(deposit_amount).ok_or(VaultError::Overflow)?;
 
+
+        msg!("Tokens Successfully Deposited");
         Ok(())
     }
 }

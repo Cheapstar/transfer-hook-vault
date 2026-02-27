@@ -41,6 +41,7 @@ pub struct AddUser<'info> {
 impl<'info> AddUser<'info> {
     pub fn add_user(&mut self, user:Pubkey, seeds:u64,bumps:&AddUserBumps)->Result<()> {
 
+        msg!("Adding User to Whitelist");
         self.user_vault_data.set_inner(
             UserVaultAccount { 
                 user: user,
@@ -55,7 +56,7 @@ impl<'info> AddUser<'info> {
         self.vault.number_of_users.checked_add(1).ok_or(VaultError::Overflow)?;
 
 
-        msg!("Add user {} to the whitelist", user);
+        msg!("Added user {} to the whitelist", user);
         Ok(())
     }
 }

@@ -1,5 +1,5 @@
 use anchor_lang::prelude::*;
-use anchor_spl::{associated_token::AssociatedToken, token::Token, token_interface::{Mint, TokenAccount}};
+use anchor_spl::{associated_token::AssociatedToken, token_interface::{Mint, TokenAccount, TokenInterface}};
 use crate::{ constant::VAULT, state::vault::Vault};
 
 
@@ -24,18 +24,20 @@ pub struct InitializeVault<'info> {
         init, 
         payer = admin,
         associated_token::mint = mint,
-        associated_token::authority = vault
+        associated_token::authority = vault,
     )]
     pub vault_ata:InterfaceAccount<'info,TokenAccount>,
 
     pub associated_token_program:Program<'info,AssociatedToken>,
-    pub token_program:Program<'info,Token>,
+    pub token_program : Interface<'info,TokenInterface>,
     pub system_program:Program<'info,System>
 }
 
 
 impl<'info> InitializeVault<'info> {
     pub fn init_vault(&mut self,seeds:u64,bumps:&InitializeVaultBumps)->Result<()>{
+
+        msg!("Initializing Vault .. ");
         self.vault.set_inner(
             Vault {
                 admin: *self.admin.key,
@@ -47,6 +49,7 @@ impl<'info> InitializeVault<'info> {
             }
         );
 
+        msg!("Vault Initialize Successfully");
         Ok(())
     }
 }
